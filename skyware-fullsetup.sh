@@ -269,17 +269,113 @@ color7  #D4D4D4
 font_size 11
 EOF
 
+echo "== Finalizing Installation =="
+
+# -----------------------------
+# OS release branding (KDE reads this)
+# -----------------------------
+sudo tee /etc/os-release > /dev/null << 'EOF'
+NAME="SkywareOS"
+PRETTY_NAME="SkywareOS"
+ID=skywareos
+ID_LIKE=arch
+VERSION="rolling"
+VERSION_ID=rolling
+HOME_URL="https://github.com/SkywareSW"
+LOGO=skywareos
+EOF
+
+sudo tee /usr/lib/os-release > /dev/null << 'EOF'
+NAME="SkywareOS"
+PRETTY_NAME="SkywareOS"
+ID=skywareos
+ID_LIKE=arch
+VERSION="rolling"
+VERSION_ID=rolling
+HOME_URL="https://skywareos.dev"
+SUPPORT_URL="https://skywareos.dev/support"
+BUG_REPORT_URL="https://skywareos.dev/bugs"
+LOGO=skywareos
+EOF
+
+# -----------------------------
+# Install distro logo (for KDE)
+# -----------------------------
+sudo mkdir -p /usr/share/icons/hicolor/scalable/apps
+sudo cp assets/skywareos.svg \
+  /usr/share/icons/hicolor/scalable/apps/skywareos.svg
+
+sudo gtk-update-icon-cache /usr/share/icons/hicolor
+
+# -----------------------------
+# SDDM branding (login screen)
+# -----------------------------
+sudo pacman -S --noconfirm sddm breeze sddm-kcm
+sudo systemctl enable sddm
+
+sudo mkdir -p /etc/sddm.conf.d
+sudo tee /etc/sddm.conf.d/10-skywareos.conf > /dev/null << 'EOF'
+[Theme]
+Current=breeze
+EOF
+
+sudo mkdir -p /usr/share/sddm/themes/breeze/assets
+sudo cp assets/skywareos.svg \
+  /usr/share/sddm/themes/breeze/assets/logo.svg
+
+# SDDM background
+if [[ -f assets/skywareos-wallpaper.png ]]; then
+  sudo cp assets/skywareos-wallpaper.png \
+    /usr/share/sddm/themes/breeze/background.png
+fi
+
+# -----------------------------
+# Plasma Splash Screen (Look & Feel)
+# -----------------------------
+sudo mkdir -p /usr/share/plasma/look-and-feel/org.skywareos.desktop/contents/splash
+
+sudo tee /usr/share/plasma/look-and-feel/org.skywareos.desktop/metadata.desktop > /dev/null << 'EOF'
+[Desktop Entry]
+Name=SkywareOS
+Comment=SkywareOS Plasma Look and Feel
+Type=Service
+X-KDE-ServiceTypes=Plasma/LookAndFeel
+X-KDE-PluginInfo-Name=org.skywareos.desktop
+X-KDE-PluginInfo-Author=SkywareOS
+X-KDE-PluginInfo-Version=1.0
+X-KDE-PluginInfo-License=GPL
+EOF
+
+sudo tee /usr/share/plasma/look-and-feel/org.skywareos.desktop/contents/splash/Splash.qml > /dev/null << 'EOF'
+import QtQuick 2.15
+
+Rectangle {
+    color: "#1e1e1e"
+
+    Image {
+        anchors.centerIn: parent
+        source: "logo.svg"
+        width: 256
+        height: 256
+        fillMode: Image.PreserveAspectFit
+    }
+}
+EOF
+
+sudo cp assets/skywareos.svg \
+  /usr/share/plasma/look-and-feel/org.skywareos.desktop/contents/splash/logo.svg
+
+# Set Plasma splash automatically
+kwriteconfig5 --file kscreenlockerrc --group Greeter --key Theme org.skywareos.desktop
+kwriteconfig5 --file plasmarc --group Theme --key name org.skywareos.desktop
+
+echo "→ SkywareOS branding applied (KDE + SDDM + splash)"
+
+
 # -----------------------------
 # Done
 # -----------------------------
 echo "== SkywareOS full setup complete =="
-echo "→ GPU drivers installed"
-echo "→ Desktop environment / Hyprland configured"
-echo "→ fastfetch branded with ASCII logo and OS name"
-echo "→ /etc/os-release patched"
-echo "→ btop themed"
-echo "→ Starship zsh prompt enabled"
-echo "→ Alacritty + Kitty dark-gray themed"
-echo "→ Flatpak apps installed"
 echo "Log out or reboot required"
+
 
