@@ -23,6 +23,7 @@ case "$gpu_choice" in
     1)
         echo "Installing Modern NVIDIA drivers..."
         sudo pacman -S --noconfirm nvidia-open nvidia-utils nvidia-settings
+        ;;
     
     2)
         echo "Installing NVIDIA drivers (DKMS)..."
@@ -381,6 +382,7 @@ echo "→ SkywareOS Finalization Complete"
 # -----------------------------
 echo "== SkywareOS full setup complete =="
 echo "Log out or reboot required"
+
 
 
 
