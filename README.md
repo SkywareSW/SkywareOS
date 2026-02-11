@@ -1,4 +1,4 @@
-Run this in your MINIMAL install
+Run this in your install
 
 git clone https://github.com/SkywareSW/SkywareOS-Full \
 cd SkywareOS-Full\
