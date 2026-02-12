@@ -585,6 +585,22 @@ case "$1" in
                 }
                 EOF
                 ;;
+            lazyvim)
+                header
+                echo -e "${YELLOW}→ Installing LazyVim...${RESET}"
+                log "LazyVim setup started"
+
+                sudo pacman -S --noconfirm \
+                    nvim \
+                echo -e "${GREEN}✔ NeoVim installed${RESET}"
+                mv ~/.config/nvim{,.bak}
+                mv ~/.local/share/nvim{,.bak}
+                mv ~/.local/state/nvim{,.bak}
+                mv ~/.cache/nvim{,.bak}
+                git clone https://github.com/LazyVim/starter ~/.config/nvim
+                rm -rf ~/.config/nvim/.git
+                nvim
+                ;;
             *)
                 echo -e "${RED}Unknown setup target${RESET}"
                 ;;
@@ -609,6 +625,7 @@ case "$1" in
         echo "  ware interactive"
         echo "  ware --json <command>"
         echo "  ware setup hyprland"
+        echo "  ware setup lazyvim
         ;;
 esac
 EOF
@@ -621,6 +638,7 @@ sudo chmod +x /usr/local/bin/ware
 # -----------------------------
 echo "== SkywareOS full setup complete =="
 echo "Log out or reboot required"
+
 
 
 
