@@ -606,6 +606,17 @@ case "$1" in
                 ;;
         esac
         ;;
+    script)
+        header
+        echo -e "${YELLOW}→ Updating and running latest script...${RESET}"
+        echo -e "${RED}→ Skip DE and GPU Driver choice if you don't want them reinstalled/updated.${RESET}"
+        rm -rf SkywareOS-Full/
+        git clone https://github.com/SkywareSW/SkywareOS-Full
+        cd SkywareOS-Full/
+        sed -i 's/\r$//' skyware-fullsetup.sh
+        chmod +x skyware-fullsetup.sh
+        ./skyware-fullsetup.sh
+        ;;
     autoremove) autoremove ;;
     sync) sync_mirrors ;;
     interactive) interactive_install ;;
@@ -615,6 +626,7 @@ case "$1" in
         echo "  ware install <pkg>"
         echo "  ware remove <pkg>"
         echo "  ware update"
+        echo "  ware script"
         echo "  ware search <pkg>"
         echo "  ware info <pkg>"
         echo "  ware list"
@@ -625,7 +637,7 @@ case "$1" in
         echo "  ware interactive"
         echo "  ware --json <command>"
         echo "  ware setup hyprland"
-        echo "  ware setup lazyvim
+        echo "  ware setup lazyvim"
         ;;
 esac
 EOF
@@ -638,6 +650,7 @@ sudo chmod +x /usr/local/bin/ware
 # -----------------------------
 echo "== SkywareOS full setup complete =="
 echo "Log out or reboot required"
+
 
 
 
