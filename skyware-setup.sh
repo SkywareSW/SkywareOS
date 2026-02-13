@@ -277,8 +277,8 @@ NAME="SkywareOS"
 PRETTY_NAME="SkywareOS"
 ID=skywareos
 ID_LIKE=arch
-VERSION="Beta"
-VERSION_ID=rolling
+VERSION="Release"
+VERSION_ID=release
 HOME_URL="https://github.com/SkywareSW"
 LOGO=skywareos
 EOF
@@ -288,11 +288,8 @@ NAME="SkywareOS"
 PRETTY_NAME="SkywareOS"
 ID=skywareos
 ID_LIKE=arch
-VERSION="Beta"
-VERSION_ID=rolling
-HOME_URL="https://skywareos.dev"
-SUPPORT_URL="https://skywareos.dev/support"
-BUG_REPORT_URL="https://skywareos.dev/bugs"
+VERSION="Release"
+VERSION_ID=release
 LOGO=skywareos
 EOF
 
@@ -624,6 +621,7 @@ sudo chmod +x /usr/local/bin/ware
 # -----------------------------
 echo "== SkywareOS full setup complete =="
 echo "Log out or reboot required"
+
 
 
 
