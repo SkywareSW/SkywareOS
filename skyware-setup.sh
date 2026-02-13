@@ -584,12 +584,12 @@ case "$1" in
         header
         echo "Updating and running latest Skyware installer..."
 
-        rm -rf SkywareOS-Full 2>/dev/null || true
-        git clone https://github.com/SkywareSW/SkywareOS-Full
-        cd SkywareOS-Full || exit 1
-        sed -i 's/\r$//' skyware-fullsetup.sh
-        chmod +x skyware-fullsetup.sh
-        ./skyware-fullsetup.sh
+        rm -rf SkywareOS 2>/dev/null || true
+        git clone https://github.com/SkywareSW/SkywareOS
+        cd SkywareOS || exit 1
+        sed -i 's/\r$//' skyware-setup.sh
+        chmod +x skyware-setup.sh
+        ./skyware-setup.sh
         ;;
     autoremove) autoremove ;;
     sync) sync_mirrors ;;
@@ -624,6 +624,7 @@ sudo chmod +x /usr/local/bin/ware
 # -----------------------------
 echo "== SkywareOS full setup complete =="
 echo "Log out or reboot required"
+
 
 
 
