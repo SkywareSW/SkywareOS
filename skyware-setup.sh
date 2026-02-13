@@ -563,10 +563,13 @@ case "$1" in
                 header
                 echo -e "${YELLOW}→ Installing Niri environment...${RESET}"
                 log "niri setup started"
+                pacman -S gum --noconfirm
+                echo -e "${GREEN} gum dependency installed.${RESET}" 
                 echo -e "${YELLOW}→ Running Skyware Niri dotfiles setup...${RESET}"
                 echo -e "${RED} Installing alongside hyprland is NOT recommended.${RESET}"
                 git clone https://github.com/acaibowlz/niri-setup.git
                 cd niri-setup
+                chmod +x setup.sh
                 ./setup.sh
                 log "Niri setup completed"
                 echo -e "${GREEN}✔ Niri setup complete${RESET}"
@@ -621,6 +624,7 @@ sudo chmod +x /usr/local/bin/ware
 # -----------------------------
 echo "== SkywareOS full setup complete =="
 echo "Log out or reboot required"
+
 
 
 
