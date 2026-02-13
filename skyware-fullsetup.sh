@@ -610,8 +610,8 @@ case "$1" in
         echo "  ware sync"
         echo "  ware interactive"
         echo "  ware --json <command>"
-        echo "  ware setup (hyprland/lazyvim)"
-        echo "  ware setup niri(experimental)"
+        echo "  ware setup <hyprland/lazyvim>"
+        echo "  ware setup niri<experimental>"
         ;;
 esac
 EOF
@@ -624,6 +624,7 @@ sudo chmod +x /usr/local/bin/ware
 # -----------------------------
 echo "== SkywareOS full setup complete =="
 echo "Log out or reboot required"
+
 
 
 
