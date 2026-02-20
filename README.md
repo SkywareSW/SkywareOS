@@ -12,7 +12,7 @@ chmod +x skyware-setup.sh\
 
 * Ware
 
-* ware status - Shows
+* ware status - Shows kernel and version, Uptime, Available updates, Firewall status, Disk usage, Memory usage, and current desktop
 
 * ware install <pkg> - Searches for said package through pacman, flatpak and aur and then proceeds to install it
 
@@ -36,17 +36,17 @@ chmod +x skyware-setup.sh\
 
 * ware info <pkg> - Gives available information on a package
 
-* ware list
+* ware list - Shows installed packages
 
 * ware doctor - Searches for and fixes any corrupt or broken packages/dependencies, then checks the firewall status
 
-* ware clean
+* ware clean - Removes unused repositories/packages
 
-* ware autoremove
+* ware autoremove - Automatically removes unused packages
 
-* ware sync
+* ware sync - Syncs mirrors
 
-* ware interactive
+* ware interactive - Simpler way to install a package
 
 * ware --json <command> - Run a custom command/script using JSON
 
