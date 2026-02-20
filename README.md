@@ -1,3 +1,5 @@
+# Installation
+
 Run this in your install
 
 git clone https://github.com/SkywareSW/SkywareOS \
@@ -5,3 +7,53 @@ cd SkywareOS\
 sed -i 's/\r$//' skyware-setup.sh\
 chmod +x skyware-setup.sh\
 ./skyware-setup.sh
+
+# Documentation
+
+* Ware
+
+* ware status - Shows
+
+* ware install <pkg> - Searches for said package through pacman, flatpak and aur and then proceeds to install it
+
+* ware remove <pkg>  - Removes package from system
+
+* ware update - Updates system and or specific package
+
+* ware upgrade - Installs and runs the latest version of SkywareOS
+
+* ware switch - Switches from the Release channel to the Testing channel
+
+* ware power (balanced/performance/battery) - Switches power mode to either of those three depending on the selection
+
+* ware dm list - Lists available display managers
+
+* ware dm status - Shows currently active display manager
+
+* ware dm switch(sddm/gdm/lightdm) - Switch between the available display managers
+
+* ware search <pkg> - Searches for the package or closest matching keyword in pacman, flatpak and aur
+
+* ware info <pkg> - Gives available information on a package
+
+* ware list
+
+* ware doctor - Searches for and fixes any corrupt or broken packages/dependencies, then checks the firewall status
+
+* ware clean
+
+* ware autoremove
+
+* ware sync
+
+* ware interactive
+
+* ware --json <command> - Run a custom command/script using JSON
+
+* ware setup hyprland - Automatically Sets up hyprland with jakoolit's dotfiles\
+
+* ware setup lazyvim - Automatically sets up Lazyvim
+
+* ware setup niri - Automatically sets up Niri (EXPERIMENTAL)
+
+* ware setup mango - Automatically sets up MangoWC (EXPERIMENTAL)
