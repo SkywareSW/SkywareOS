@@ -733,6 +733,7 @@ case "$1" in
         echo "  ware remove <pkg>"
         echo "  ware update"
         echo "  ware upgrade"
+        echo "  ware switch"
         echo "  ware power (balanced/performance/battery)"
         echo "  ware dm (switch/list/status)"
         echo "  ware search <pkg>"
@@ -759,6 +760,7 @@ sudo chmod +x /usr/local/bin/ware
 # -----------------------------
 echo "== SkywareOS full setup complete =="
 echo "Log out or reboot required"
+
 
 
 
