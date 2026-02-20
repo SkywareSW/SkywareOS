@@ -723,11 +723,38 @@ case "$1" in
         ;;
     autoremove) autoremove ;;
     sync) sync_mirrors ;;
+    help)
+        echo -e "ware status - Shows kernel and version, Uptime, Available updates, Firewall status, Disk usage, Memory usage, Current desktop and current channel"
+        echo -e "ware install - Searches for said package through pacman, flatpak and aur and then proceeds to install it"
+        echo -e "ware remove - Removes package from system"
+        echo -e "ware update - Updates system and or specific package"
+        echo -e "ware upgrade - Installs and runs the latest version of SkywareOS"
+        echo -e "ware switch - Switches from the Release channel to the Testing channel"
+        echo -e "ware power (balanced/performance/battery) - Switches power mode to either of those three depending on the selection"
+        echo -e "ware dm list - Lists available display managers"
+        echo -e "ware dm status - Shows currently active display manager"
+        echo -e "ware dm switch(sddm/gdm/lightdm) - Switch between the available display managers"
+        echo -e "ware search - Searches for the package or closest matching keyword in pacman, flatpak and aur"
+        echo -e "ware info - Gives available information on a package"
+        echo -e "ware list - Shows installed packages"
+        echo -e "ware doctor - Searches for and fixes any corrupt or broken packages/dependencies, then checks the firewall status"
+        echo -e "ware clean - Removes unused repositories/packages"
+        echo -e "ware autoremove - Automatically removes unused packages"
+        echo -e "ware sync - Syncs mirrors"
+        echo -e "ware interactive - Simpler way to install a package"
+        echo -e "ware --json - Run a custom command/script using JSON"
+        echo -e "ware setup hyprland - Automatically Sets up hyprland with jakoolit's dotfiles"
+        echo -e "ware setup lazyvim - Automatically sets up Lazyvim"
+        echo -e "ware setup niri - Automatically sets up Niri (EXPERIMENTAL)"
+        echo -e "ware setup mango - Automatically sets up MangoWC (EXPERIMENTAL)"
+        echo -e "ware setup dwm - Automatically sets up DWM (EXPERIMENTAL)"
+        ;;
     interactive) interactive_install ;;
     *) 
         header
         echo "Usage:"
         echo "  ware status"
+        echo "  ware help"
         echo "  ware install <pkg>"
         echo "  ware remove <pkg>"
         echo "  ware update"
@@ -759,6 +786,7 @@ sudo chmod +x /usr/local/bin/ware
 # -----------------------------
 echo "== SkywareOS full setup complete =="
 echo "Log out or reboot required"
+
 
 
 
