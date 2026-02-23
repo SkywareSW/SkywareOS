@@ -26,6 +26,7 @@ echo "2) NVIDIA"
 echo "3) AMD"
 echo "4) Intel"
 echo "5) VMware"
+echo "6) Skip"
 read -rp "Enter choice (1/2/3/4/5): " gpu_choice
 
 case "$gpu_choice" in
@@ -50,6 +51,9 @@ case "$gpu_choice" in
         echo "Installing VMware drivers..."
         sudo pacman -S --noconfirm open-vm-tools mesa
         ;;
+    6)
+        echo "Skipping..."
+        ;;
     *)
         echo "Invalid choice, skipping GPU drivers."
         ;;
@@ -63,6 +67,7 @@ echo "Select your Desktop Environment / Compositor:"
 echo "1) KDE Plasma"
 echo "2) GNOME"
 echo "3) Deepin"
+echo "4) Skip"
 read -rp "Enter choice (1/2/3): " de_choice
 
 case "$de_choice" in
@@ -80,6 +85,9 @@ case "$de_choice" in
         echo "Installing Deepin..."
         sudo pacman -S --noconfirm deepin deepin-kwin deepin-extra
         sudo systemctl enable lightdm
+        ;;
+    4)
+        echo "Skipping..."
         ;;
     *)
         echo "Invalid choice, skipping DE installation."
@@ -249,8 +257,8 @@ NAME="SkywareOS"
 PRETTY_NAME="SkywareOS"
 ID=skywareos
 ID_LIKE=arch
-VERSION="Release"
-VERSION_ID=Release
+VERSION="Red(0.58)"
+VERSION_ID=Release_0-58
 HOME_URL="https://github.com/SkywareSW"
 LOGO=skywareos
 EOF
@@ -260,8 +268,8 @@ NAME="SkywareOS"
 PRETTY_NAME="SkywareOS"
 ID=skywareos
 ID_LIKE=arch
-VERSION="Release"
-VERSION_ID=Release
+VERSION="Red(0.58)"
+VERSION_ID=Release_0-58
 LOGO=skywareos
 EOF
 
@@ -277,7 +285,7 @@ sudo gtk-update-icon-cache /usr/share/icons/hicolor
 # -----------------------------
 # SDDM branding (login screen)
 # -----------------------------
-sudo pacman -S --noconfirm sddm breeze sddm-kcm
+sudo pacman -S --noconfirm --needed sddm breeze sddm-kcm
 
 sudo mkdir -p /etc/sddm.conf.d
 sudo tee /etc/sddm.conf.d/10-skywareos.conf > /dev/null << 'EOF'
@@ -786,10 +794,3 @@ sudo chmod +x /usr/local/bin/ware
 # -----------------------------
 echo "== SkywareOS full setup complete =="
 echo "Log out or reboot required"
-
-
-
-
-
-
-
