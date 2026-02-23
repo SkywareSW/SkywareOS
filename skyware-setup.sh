@@ -20,44 +20,36 @@ sudo ufw enable
 # -----------------------------
 # GPU Driver Selection
 # -----------------------------
-echo "Select your GPU driver:"
-echo "1) NVIDIA (Modern)"
-echo "2) NVIDIA"
-echo "3) AMD"
-echo "4) Intel"
-echo "5) VMware"
-echo "6) Skip"
-read -rp "Enter choice (1/2/3/4/5): " gpu_choice
+echo "== Detecting GPU =="
 
-case "$gpu_choice" in
-    1)
-        echo "Installing Modern NVIDIA drivers..."
-        sudo pacman -S --noconfirm nvidia-open nvidia-utils nvidia-settings
-        ;;
-    
-    2)
-        echo "Installing NVIDIA drivers (DKMS)..."
-        sudo pacman -S --noconfirm nvidia-dkms nvidia-utils nvidia-settings
-        ;;
-    3)
-        echo "Installing AMD drivers..."
-        sudo pacman -S --noconfirm xf86-video-amdgpu mesa
-        ;;
-    4)
-        echo "Installing Intel drivers..."
-        sudo pacman -S --noconfirm xf86-video-intel mesa
-        ;;
-    5)
-        echo "Installing VMware drivers..."
-        sudo pacman -S --noconfirm open-vm-tools mesa
-        ;;
-    6)
-        echo "Skipping..."
-        ;;
-    *)
-        echo "Invalid choice, skipping GPU drivers."
-        ;;
-esac
+GPU_INFO=$(lspci | grep -E "VGA|3D")
+
+if echo "$GPU_INFO" | grep -qi "NVIDIA"; then
+    echo "→ NVIDIA GPU detected"
+
+    if echo "$GPU_INFO" | grep -qi "RTX\|GTX 16"; then
+        echo "Installing modern NVIDIA (nvidia-open)..."
+        sudo pacman -S --noconfirm --needed nvidia-open nvidia-utils nvidia-settings
+    else
+        echo "Installing NVIDIA DKMS..."
+        sudo pacman -S --noconfirm --needed nvidia-dkms nvidia-utils nvidia-settings
+    fi
+
+elif echo "$GPU_INFO" | grep -qi "AMD"; then
+    echo "→ AMD GPU detected"
+    sudo pacman -S --noconfirm --needed xf86-video-amdgpu mesa
+
+elif echo "$GPU_INFO" | grep -qi "Intel"; then
+    echo "→ Intel GPU detected"
+    sudo pacman -S --noconfirm --needed xf86-video-intel mesa
+
+elif echo "$GPU_INFO" | grep -qi "VMware"; then
+    echo "→ VMware detected"
+    sudo pacman -S --noconfirm --needed open-vm-tools mesa
+
+else
+    echo "⚠ Could not detect GPU automatically"
+fi
 
 # -----------------------------
 # Desktop Environment / Compositor Selection
@@ -257,8 +249,8 @@ NAME="SkywareOS"
 PRETTY_NAME="SkywareOS"
 ID=skywareos
 ID_LIKE=arch
-VERSION="Red(0.5)"
-VERSION_ID=Release_0-5
+VERSION="Red(0.6)"
+VERSION_ID=Release_0-6
 HOME_URL="https://github.com/SkywareSW"
 LOGO=skywareos
 EOF
@@ -268,8 +260,8 @@ NAME="SkywareOS"
 PRETTY_NAME="SkywareOS"
 ID=skywareos
 ID_LIKE=arch
-VERSION="Red(0.5)"
-VERSION_ID=Release_0-5
+VERSION="Red(0.6)"
+VERSION_ID=Release_0-6
 LOGO=skywareos
 EOF
 
@@ -408,7 +400,7 @@ install_pkg() {
             wait
             log "Installed via pacman: $pkg"
 
-        elif flatpak search "$pkg" | grep -qi "$pkg"; then
+        elif flatpak search --columns=application "$pkg" | grep -Fxq "$pkg"; then
             flatpak install -y flathub "$pkg" &
             spinner
             wait
@@ -730,6 +722,28 @@ case "$1" in
         ./skyware-setup.sh
         ;;
     autoremove) autoremove ;;
+    snap)
+        header
+        echo -e "${YELLOW}→ Installing Snap support...${RESET}"
+        log "Snap setup started"
+
+        sudo pacman -S --noconfirm snapd
+        sudo systemctl enable --now snapd.socket
+        sudo ln -sf /var/lib/snapd/snap /snap
+
+        echo -e "${GREEN}✔ Snap support enabled${RESET}"
+        log "Snap setup completed"
+        ;;
+    snap-remove)
+        header
+        echo -e "${YELLOW}→ Removing Snap support...${RESET}"
+
+        sudo systemctl disable snapd.socket
+        sudo pacman -Rns --noconfirm snapd
+        sudo rm -f /snap
+
+        echo -e "${GREEN}✔ Snap removed${RESET}"
+        ;;
     sync) sync_mirrors ;;
     help)
         echo -e "ware status - Shows kernel and version, Uptime, Available updates, Firewall status, Disk usage, Memory usage, Current desktop and current channel"
@@ -755,7 +769,8 @@ case "$1" in
         echo -e "ware setup lazyvim - Automatically sets up Lazyvim"
         echo -e "ware setup niri - Automatically sets up Niri (EXPERIMENTAL)"
         echo -e "ware setup mango - Automatically sets up MangoWC (EXPERIMENTAL)"
-        echo -e "ware setup dwm - Automatically sets up DWM (EXPERIMENTAL)"
+        echo -e "ware setup snap - Installs and enables the Snap package manager"
+        echo -e "ware setup snap-remove - Removes the Snap package manager"
         ;;
     interactive) interactive_install ;;
     *) 
@@ -782,6 +797,8 @@ case "$1" in
         echo "  ware setup (hyprland/lazyvim)"
         echo "  ware setup niri(experimental)"
         echo "  ware setup mango(experimental)"
+        echo "  ware setup snap"
+        echo "  ware setup snap-remove"
         ;;
 esac
 EOF
