@@ -4,6 +4,12 @@
 <summary>Update Logs</summary>
 <br>
 
+# Red (V0.6)
+
+* Added snap support (ware setup snap)
+* Made GPU Drivers get automatically detected instead of having to be manually selected
+* Dramatically improved ware search
+
 # Red (V0.5)
 
 * Made installation significantly faster by adding --needed to most installation commands
@@ -81,6 +87,10 @@ chmod +x skyware-setup.sh\
 * ware setup niri - Automatically sets up Niri (EXPERIMENTAL)
 
 * ware setup mango - Automatically sets up MangoWC (EXPERIMENTAL)
+
+* ware setup snap - Installs and enables the Snap package manager
+
+* ware setup snap-remove - Removes the Snap package manager
 
 
 </details>
