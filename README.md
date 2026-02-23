@@ -1,3 +1,21 @@
+# SkywareOS
+
+<details>
+<summary>Update Logs</summary>
+<br>
+
+# Red (V0.5)
+
+* Made installation significantly faster by adding --needed to most installation commands
+* Made installer change to sed (was broken before)
+* ware optimizations
+
+</details>
+
+<details>
+<summary>Installation</summary>
+<br>
+
 # Installation
 
 Run this in your install
@@ -6,6 +24,11 @@ git clone https://github.com/SkywareSW/SkywareOS \
 cd SkywareOS\
 chmod +x skyware-setup.sh\
 ./skyware-setup.sh
+</details>
+
+<details>
+<summary>Documentation</summary>
+<br>
 
 # Documentation
 
@@ -56,3 +79,5 @@ chmod +x skyware-setup.sh\
 * ware setup niri - Automatically sets up Niri (EXPERIMENTAL)
 
 * ware setup mango - Automatically sets up MangoWC (EXPERIMENTAL)
+
+</details>
