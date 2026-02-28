@@ -54,37 +54,64 @@ fi
 # -----------------------------
 # Desktop Environment / Compositor Selection
 # -----------------------------
-sudo pacman -S --noconfirm --needed gdm lightdm sddm
-echo "Select your Desktop Environment / Compositor:"
-echo "1) KDE Plasma"
-echo "2) GNOME"
-echo "3) Deepin"
-echo "4) Skip"
-read -rp "Enter choice (1/2/3): " de_choice
 
-case "$de_choice" in
-    1)
-        echo "Installing KDE Plasma..."
-        sudo pacman -S --noconfirm plasma kde-applications sddm
-        sudo systemctl enable sddm
-        ;;
-    2)
-        echo "Installing GNOME..."
-        sudo pacman -S --noconfirm gnome gnome-extra gdm
-        sudo systemctl enable gdm
-        ;;
-    3)
-        echo "Installing Deepin..."
-        sudo pacman -S --noconfirm deepin deepin-kwin deepin-extra
-        sudo systemctl enable lightdm
-        ;;
-    4)
-        echo "Skipping..."
-        ;;
-    *)
-        echo "Invalid choice, skipping DE installation."
-        ;;
-esac
+echo "== Checking for existing Desktop Environment =="
+
+DE_ALREADY_INSTALLED=false
+
+# Check for enabled display managers
+if systemctl is-enabled gdm &>/dev/null || \
+   systemctl is-enabled sddm &>/dev/null || \
+   systemctl is-enabled lightdm &>/dev/null; then
+    DE_ALREADY_INSTALLED=true
+fi
+
+# Check for common DE packages
+if pacman -Q plasma-desktop &>/dev/null || \
+   pacman -Q gnome-shell &>/dev/null || \
+   pacman -Q deepin &>/dev/null; then
+    DE_ALREADY_INSTALLED=true
+fi
+
+if [ "$DE_ALREADY_INSTALLED" = true ]; then
+    echo "→ Existing Desktop Environment detected."
+    echo "→ Skipping DE installation."
+else
+    echo "No Desktop Environment detected."
+    sudo pacman -S --noconfirm --needed gdm lightdm sddm
+
+    echo "Select your Desktop Environment:"
+    echo "1) KDE Plasma"
+    echo "2) GNOME"
+    echo "3) Deepin"
+    echo "4) Skip"
+
+    read -rp "Enter choice (1/2/3/4): " de_choice
+
+    case "$de_choice" in
+        1)
+            echo "Installing KDE Plasma..."
+            sudo pacman -S --noconfirm plasma kde-applications sddm
+            sudo systemctl enable sddm
+            ;;
+        2)
+            echo "Installing GNOME..."
+            sudo pacman -S --noconfirm gnome gnome-extra gdm
+            sudo systemctl enable gdm
+            ;;
+        3)
+            echo "Installing Deepin..."
+            sudo pacman -S --noconfirm deepin deepin-kwin deepin-extra lightdm
+            sudo systemctl enable lightdm
+            ;;
+        4)
+            echo "Skipping..."
+            ;;
+        *)
+            echo "Invalid choice, skipping DE installation."
+            ;;
+    esac
+fi
 
 # -----------------------------
 # Flatpak apps
@@ -249,8 +276,8 @@ NAME="SkywareOS"
 PRETTY_NAME="SkywareOS"
 ID=skywareos
 ID_LIKE=arch
-VERSION="Red(0.6.1)"
-VERSION_ID=Release_0-6-1
+VERSION="Red(0.7)"
+VERSION_ID=Release_0-7
 HOME_URL="https://github.com/SkywareSW"
 LOGO=skywareos
 EOF
@@ -260,8 +287,8 @@ NAME="SkywareOS"
 PRETTY_NAME="SkywareOS"
 ID=skywareos
 ID_LIKE=arch
-VERSION="Red(0.6.1)"
-VERSION_ID=Release_0-6-1
+VERSION="Red(0.7)"
+VERSION_ID=Release_0-7
 LOGO=skywareos
 EOF
 
@@ -582,7 +609,7 @@ ware_status() {
     echo -e "Memory:        $mem"
     echo -e "Desktop:       ${de:-Unknown}"
     echo -e "Channel:       Release"
-    echo -e "Version:       Red 0.6.1"
+    echo -e "Version:       Red 0.7"
 }
 
 
@@ -723,6 +750,18 @@ case "$1" in
         ./skyware-setup.sh
         ;;
     autoremove) autoremove ;;
+    git)
+        header
+        echo "→ Opening SkywareOS website..."
+        # Try xdg-open (Linux standard) to open default browser
+        if command -v xdg-open &>/dev/null; then
+            xdg-open "https://skywaresw.github.io/SkywareOS"
+            echo "✔ Website opened in default browser"
+        else
+            echo "⚠ xdg-open not found. Please open the URL manually:"
+            echo "  https://skywaresw.github.io/SkywareOS"
+        fi
+        ;;
     snap)
         header
         echo -e "${YELLOW}→ Installing Snap support...${RESET}"
@@ -753,6 +792,7 @@ case "$1" in
         echo -e "ware update - Updates system and or specific package"
         echo -e "ware upgrade - Installs and runs the latest version of SkywareOS"
         echo -e "ware switch - Switches from the Release channel to the Testing channel"
+        echo -e "ware git - Opens the git website for SkywareOS"
         echo -e "ware power (balanced/performance/battery) - Switches power mode to either of those three depending on the selection"
         echo -e "ware dm list - Lists available display managers"
         echo -e "ware dm status - Shows currently active display manager"
@@ -784,6 +824,7 @@ case "$1" in
         echo "  ware update"
         echo "  ware upgrade"
         echo "  ware switch"
+        echo "  ware git"
         echo "  ware power (balanced/performance/battery)"
         echo "  ware dm (switch/list/status)"
         echo "  ware search <pkg>"
