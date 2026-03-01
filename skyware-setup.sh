@@ -122,32 +122,30 @@ fi
 # SkywareOS - Boot Splash
 # ============================================================
 
-echo "== Setting up SkywareOS static boot splash (Plymouth) =="
+echo "== Setting up SkywareOS boot splash (Plymouth) =="
 
-# Install Plymouth if not installed
+# Install Plymouth if missing
 if ! command -v plymouthd &>/dev/null; then
     echo "→ Installing Plymouth..."
     sudo pacman -S --noconfirm plymouth
 fi
 
+# Install librsvg for SVG -> PNG conversion
+sudo pacman -S --noconfirm librsvg
+
 # Create SkywareOS Plymouth theme directory
 sudo mkdir -p /usr/share/plymouth/themes/skywareos
 
-# Copy logo/wallpaper if exists
-if [ -f assets/skywareos-logo.png ]; then
-    sudo cp assets/skywareos-logo.png /usr/share/plymouth/themes/skywareos/logo.png
-    echo "✔ Logo installed"
+# Convert SVG logo to PNG and copy
+if [ -f assets/skywareos-logo.svg ]; then
+    sudo rsvg-convert -w 512 -h 512 -o /usr/share/plymouth/themes/skywareos/logo.png \
+        assets/skywareos-logo.svg
+    echo "✔ Logo converted from SVG to PNG and installed"
 else
-    echo "⚠ Logo not found: assets/skywareos-logo.png"
+    echo "⚠ Logo not found: assets/skywareos-logo.svg"
 fi
 
-# Copy wallpaper if exists (optional for full-screen)
-if [ -f assets/skywareos-wallpaper.png ]; then
-    sudo cp assets/skywareos-wallpaper.png /usr/share/plymouth/themes/skywareos/background.png
-    echo "✔ Wallpaper installed"
-fi
-
-# Create skywareos.plymouth descriptor
+# Create descriptor file for Plymouth
 sudo tee /usr/share/plymouth/themes/skywareos/skywareos.plymouth > /dev/null << 'EOF'
 [Plymouth Theme]
 Name=SkywareOS
@@ -159,7 +157,7 @@ ImageDir=/usr/share/plymouth/themes/skywareos
 ScriptFile=/usr/share/plymouth/themes/skywareos/skywareos.script
 EOF
 
-# Create the minimal script to display static logo
+# Create minimal script for centered logo on black background
 sudo tee /usr/share/plymouth/themes/skywareos/skywareos.script > /dev/null << 'EOF'
 # Set black background
 plymouth.set_background_color(0,0,0)
@@ -168,9 +166,9 @@ plymouth.set_background_color(0,0,0)
 plymouth.image("logo.png")
 EOF
 
-# Set SkywareOS theme as default
+# Set SkywareOS theme as default and rebuild initramfs
 sudo plymouth-set-default-theme -R skywareos
-echo "✔ Plymouth theme set as default and initramfs rebuilt"
+echo "✔ Plymouth theme set as default (logo only) and initramfs rebuilt"
 
 echo "→ Boot splash setup complete"
 
