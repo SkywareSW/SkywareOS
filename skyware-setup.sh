@@ -127,7 +127,7 @@ echo "== Setting up SkywareOS static boot splash (Plymouth) =="
 # Install Plymouth if not installed
 if ! command -v plymouthd &>/dev/null; then
     echo "→ Installing Plymouth..."
-    sudo pacman -S --noconfirm plymouth plymouth-theme-spinner
+    sudo pacman -S --noconfirm plymouth
 fi
 
 # Create SkywareOS Plymouth theme directory
