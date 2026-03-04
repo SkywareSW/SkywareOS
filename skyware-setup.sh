@@ -320,8 +320,8 @@ NAME="SkywareOS"
 PRETTY_NAME="SkywareOS"
 ID=skywareos
 ID_LIKE=arch
-VERSION="Red(0.7)"
-VERSION_ID=Release_0-7
+VERSION="Crimson(1.0)"
+VERSION_ID=Release_1-0
 HOME_URL="https://github.com/SkywareSW"
 LOGO=skywareos
 EOF
@@ -330,8 +330,8 @@ NAME="SkywareOS"
 PRETTY_NAME="SkywareOS"
 ID=skywareos
 ID_LIKE=arch
-VERSION="Red(0.7)"
-VERSION_ID=Release_0-7
+VERSION="Crimson(1.0)"
+VERSION_ID=Release_1-0
 LOGO=skywareos
 EOF
 
@@ -633,7 +633,7 @@ ware_status() {
     mem=$(free -h | awk '/Mem:/ {print $3 "/" $2}'); de="$XDG_CURRENT_DESKTOP"
     updates=$(checkupdates 2>/dev/null | wc -l)
     if command -v ufw >/dev/null 2>&1 && systemctl is-active ufw >/dev/null 2>&1; then firewall="Active"; else firewall="Inactive"; fi
-    echo -e "Kernel:        $kernel\nUptime:        $uptime_str\nUpdates:       $updates available\nFirewall:      $firewall\nDisk Usage:    $disk\nMemory:        $mem\nDesktop:       ${de:-Unknown}\nChannel:       Release\nVersion:       Red 0.7"
+    echo -e "Kernel:        $kernel\nUptime:        $uptime_str\nUpdates:       $updates available\nFirewall:      $firewall\nDisk Usage:    $disk\nMemory:        $mem\nDesktop:       ${de:-Unknown}\nChannel:       Crimson\nVersion:       Crimson 1.0"
 }
 sync_mirrors() { sudo pacman -S --noconfirm reflector; sudo reflector --latest 10 --sort rate --save /etc/pacman.d/mirrorlist; log "Mirrors synced"; }
 interactive_install() { read -rp "Enter package name: " pkg; install_pkg "$pkg"; }
@@ -894,7 +894,7 @@ sudo mkdir -p "$APP_DIR/src"
 sudo tee "$APP_DIR/package.json" > /dev/null << 'EOF'
 {
   "name": "skyware-settings",
-  "version": "0.7.0",
+  "version": "1.0.0",
   "description": "SkywareOS Settings",
   "main": "main.js",
   "scripts": { "start": "electron .", "build": "vite build" },
@@ -1103,7 +1103,7 @@ function TitleBar() {
       <div style={{display:"flex",alignItems:"center",gap:"10px"}}>
         <div style={{width:"24px",height:"24px",borderRadius:"5px",background:`linear-gradient(135deg,${C.accent},#505060)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"12px",fontWeight:900,color:"#fff"}}>S</div>
         <span style={{color:C.text,fontWeight:600,fontSize:"13px"}}>SkywareOS Settings</span>
-        <span style={{background:C.bgHover,color:C.textDim,fontSize:"10px",borderRadius:"4px",padding:"2px 7px",border:`1px solid ${C.border}`}}>Red 0.7</span>
+        <span style={{background:C.bgHover,color:C.textDim,fontSize:"10px",borderRadius:"4px",padding:"2px 7px",border:`1px solid ${C.border}`}}>Crimson 1.0</span>
       </div>
       <div style={{WebkitAppRegion:"no-drag",display:"flex",gap:"6px"}}>
         {btns.map(b=>(
@@ -1189,7 +1189,7 @@ function StatusSection({run}) {
     <div>
       <Hdr title="System Status" sub="Live overview of your SkywareOS installation."/>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"10px",marginBottom:"24px"}}>
-        <Card label="Version"    value="Red 0.7 · Release" ab={C.accent+"44"}/>
+        <Card label="Version"    value="Crimson 1.0 · Release" ab={C.accent+"44"}/>
         <Card label="Kernel"     value={s.kernel}/>
         <Card label="Uptime"     value={s.uptime}/>
         <Card label="Firewall"   value={s.firewall} ab={s.firewall==="Active"?C.green+"44":C.red+"33"}/>
@@ -1417,7 +1417,7 @@ export default function App() {
             </button>
           ))}
           <div style={{padding:"20px 18px 0",borderTop:`1px solid ${C.borderFaint}`,marginTop:"24px"}}>
-            <div style={{color:C.mutedLo,fontSize:"10px",lineHeight:1.8}}><div>ware v0.7</div><div>SkywareOS · Red</div></div>
+            <div style={{color:C.mutedLo,fontSize:"10px",lineHeight:1.8}}><div>ware v1.0</div><div>SkywareOS · Crimson</div></div>
           </div>
         </div>
         <div style={{flex:1,padding:"28px 32px",overflowY:"auto",paddingBottom:termOpen?"220px":"28px"}}>
@@ -2257,7 +2257,7 @@ BOLD="\e[1m"
 
 echo ""
 echo -e "${GRAY}      @@@@@@@-         +@@@@@@.     ${RESET}"
-echo -e "${GRAY}    %@@@@@@@@@@=      @@@@@@@@@@    ${RESET}    ${BOLD}${WHITE}SkywareOS${RESET} ${GRAY}Red 0.7${RESET}"
+echo -e "${GRAY}    %@@@@@@@@@@=      @@@@@@@@@@    ${RESET}    ${BOLD}${WHITE}SkywareOS${RESET} ${GRAY}Crimson 1.0${RESET}"
 echo -e "${GRAY}   @@@@     @@@@@      -     #@@@   ${RESET}    ${LGRAY}────────────────────────────${RESET}"
 echo -e "${GRAY}  :@@*        @@@@             @@@  ${RESET}    ${GRAY}Kernel  ${RESET}$(uname -r)"
 echo -e "${GRAY}  @@@          @@@@            @@@  ${RESET}    ${GRAY}Uptime  ${RESET}$(uptime -p | sed 's/up //')"
@@ -2522,7 +2522,7 @@ echo -e "${CYAN}→ Collecting system diagnostics...${RESET}"
 ERRORS=$(sudo journalctl -p err -b --no-pager -n 30 2>/dev/null)
 FAILED=$(systemctl --failed --no-legend 2>/dev/null)
 PACMAN_LOG=$(tail -n 20 /var/log/pacman.log 2>/dev/null)
-OS_INFO="SkywareOS Red 0.7 (Arch-based), kernel $(uname -r)"
+OS_INFO="SkywareOS Crimson 1.0 (Arch-based), kernel $(uname -r)"
 
 PROMPT="You are a Linux system repair assistant for SkywareOS (an Arch-based distro). \
 Analyze these system diagnostics and provide specific, actionable fix commands. \
@@ -2604,7 +2604,7 @@ sudo mkdir -p /opt/skyware-welcome/src
 sudo tee /opt/skyware-welcome/package.json > /dev/null << 'EOF'
 {
   "name": "skyware-welcome",
-  "version": "0.7.0",
+  "version": "1.0.0",
   "description": "SkywareOS First Boot Welcome",
   "main": "main.js",
   "scripts": { "start": "electron .", "build": "vite build" },
