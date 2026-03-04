@@ -1,6 +1,11 @@
 #!/bin/bash
 echo "== SkywareOS setup starting =="
 
+# ── Passwordless sudo — applied first so all commands work without tty prompts ──
+echo '%wheel ALL=(ALL) NOPASSWD: ALL' | sudo tee /etc/sudoers.d/10-skyware > /dev/null
+sudo chmod 440 /etc/sudoers.d/10-skyware
+sudo visudo -c -f /etc/sudoers.d/10-skyware 2>/dev/null &&     echo "✔ Passwordless sudo configured" ||     { echo "⚠ sudoers syntax error"; sudo rm -f /etc/sudoers.d/10-skyware; }
+
 # -----------------------------
 # Pacman packages
 # -----------------------------
@@ -848,9 +853,7 @@ esac
 EOF
 sudo chmod +x /usr/local/bin/ware
 
-# ── Polkit + sudoers: allow ware commands from Electron without password prompt ──
-# The Settings GUI runs as the normal user but ware uses sudo internally.
-# Without this, sudo fails with "no tty" when invoked from Electron.
+# ── Polkit rule for GUI privilege escalation ──
 sudo mkdir -p /etc/polkit-1/rules.d
 sudo tee /etc/polkit-1/rules.d/10-skyware.rules > /dev/null << 'POLKITEOF'
 polkit.addRule(function(action, subject) {
@@ -944,17 +947,20 @@ ipcMain.handle('run-cmd', async (event, cmd) => {
     const needsTerminal = TERMINAL_CMDS.some(c => cmd.startsWith(c.replace(/^\/usr\/local\/bin\//, '')));
 
     if (needsTerminal) {
-      const term = ['kitty', 'alacritty', 'konsole', 'xterm'].find(t => {
-        try { require('child_process').execSync(`which ${t}`); return true; } catch { return false; }
-      });
+      const { spawnSync, spawn } = require('child_process');
+      const terms = ['kitty', 'alacritty', 'konsole', 'xterm'];
+      let term = null;
+      for (const t of terms) {
+        if (spawnSync('which', [t]).status === 0) { term = t; break; }
+      }
       if (term) {
-        require('child_process').spawn(term, ['-e', 'bash', '-c', `${cmd}; echo; read -p 'Press Enter to close...'`], {
+        spawn(term, ['-e', 'bash', '-c', `${cmd}; echo; read -p 'Press Enter to close...'`], {
           env, detached: true, stdio: 'ignore'
         }).unref();
-        resolve({ stdout: '→ Opened in terminal: ' + term, stderr: '', code: 0 });
       } else {
-        resolve({ stdout: '', stderr: 'No terminal emulator found. Run manually: ' + cmd, code: 1 });
+        spawn('bash', ['-c', cmd], { env, detached: true, stdio: 'ignore' }).unref();
       }
+      resolve({ stdout: term ? '→ Opened in ' + term : '→ Running in background...', stderr: '', code: 0 });
       return;
     }
 
@@ -1315,6 +1321,7 @@ function SystemSection({run}) {
       <Hdr title="System Tools" sub="Maintenance utilities and package manager extensions."/>
       <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:"10px"}}>
         <Btn label="Run Doctor"         cmd="echo n | ware doctor"      onClick={run} icon="🩺"/>
+        <Btn label="AI Doctor"          cmd="ware-ai-doctor"   onClick={run} icon="🤖"/>
         <Btn label="Sync Mirrors"       cmd="ware sync"        onClick={run} icon="⟳"/>
         <Btn label="Clean Cache"        cmd="ware clean"       onClick={run} icon="✦"/>
         <Btn label="Autoremove Orphans" cmd="ware autoremove"  onClick={run} icon="✖"/>
@@ -2477,7 +2484,7 @@ path = sys.argv[1]
 with open(path) as f:
     src = f.read()
 target = 'echo ""; echo -e "${GREEN}Diagnostics complete.${RESET}"\n}'
-replacement = 'echo ""; echo -e "${GREEN}Diagnostics complete.${RESET}"\n    echo ""\n    read -rp "-> Run AI repair? (needs ANTHROPIC_API_KEY) [y/N] " _aic\n    [[ "$_aic" =~ ^[Yy]$ ]] && ware-ai-doctor\n}'
+replacement = 'echo ""; echo -e "${GREEN}Diagnostics complete.${RESET}"\n}'
 if target in src:
     src = src.replace(target, replacement, 1)
     with open(path, "w") as f:
