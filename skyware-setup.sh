@@ -2,9 +2,12 @@
 echo "== SkywareOS setup starting =="
 
 # ── Passwordless sudo — applied first so all commands work without tty prompts ──
-echo '%wheel ALL=(ALL) NOPASSWD: ALL' | sudo tee /etc/sudoers.d/10-skyware > /dev/null
+sudo bash -c "echo '%wheel ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/10-skyware"
 sudo chmod 440 /etc/sudoers.d/10-skyware
-sudo visudo -c -f /etc/sudoers.d/10-skyware 2>/dev/null &&     echo "✔ Passwordless sudo configured" ||     { echo "⚠ sudoers syntax error"; sudo rm -f /etc/sudoers.d/10-skyware; }
+# Remove requiretty if set — blocks sudo without a tty (e.g. from Electron)
+grep -q 'requiretty' /etc/sudoers 2>/dev/null && sudo sed -i 's/Defaults.*requiretty/Defaults !requiretty/' /etc/sudoers || true
+echo "✔ Passwordless sudo configured"
+
 
 # -----------------------------
 # Pacman packages
@@ -951,7 +954,7 @@ ipcMain.handle('run-cmd', async (event, cmd) => {
       const terms = ['kitty', 'alacritty', 'konsole', 'xterm'];
       let term = null;
       for (const t of terms) {
-        if (spawnSync('which', [t]).status === 0) { term = t; break; }
+        if (spawnSync('which', [t], { env }).status === 0) { term = t; break; }
       }
       if (term) {
         spawn(term, ['-e', 'bash', '-c', `${cmd}; echo; read -p 'Press Enter to close...'`], {
@@ -1461,6 +1464,70 @@ echo "✔ SkywareOS Settings installed"
 echo "  → Launch from app menu: 'SkywareOS Settings'"
 echo "  → Or run: skyware-settings"
 echo "  → Or run: ware settings"
+
+# ── Pin to KDE taskbar + add desktop shortcut ──────────────────
+# KDE taskbar pinning: add to the panel's launcher list via plasma config
+# Desktop shortcut: copy .desktop to ~/Desktop
+
+# Desktop shortcut
+mkdir -p "$HOME/Desktop"
+cp /usr/share/applications/skyware-settings.desktop "$HOME/Desktop/skyware-settings.desktop"
+chmod +x "$HOME/Desktop/skyware-settings.desktop"
+echo "✔ SkywareOS Settings shortcut added to Desktop"
+
+# KDE taskbar pin — add to the Plasma panel's launcher (Task Manager pinned apps)
+# This writes into the plasmashell applets config under the Icons-only Task Manager
+# or regular Task Manager widget, which holds pinned launchers
+APPLETSRC="$HOME/.config/plasma-org.kde.plasma.desktop-appletsrc"
+
+if [ -f "$APPLETSRC" ]; then
+    # Find the task manager applet ID (Icons-only or regular)
+    TM_ID=$(grep -B5 "org.kde.plasma.icontasks\|org.kde.plasma.taskmanager"         "$APPLETSRC" 2>/dev/null | grep -oP '(?<=\[Applets\]\[)[0-9]+' | tail -1)
+
+    if [ -n "$TM_ID" ]; then
+        # Read existing launchers and append skyware-settings if not already there
+        EXISTING=$(kreadconfig6 --file "$APPLETSRC"             --group "Containments" --group "$(grep -B20 "Applets\]\[$TM_ID\]" "$APPLETSRC" | grep -oP '(?<=Containments\]\[)[0-9]+' | tail -1)"             --group "Applets" --group "$TM_ID"             --group "Configuration" --group "General"             --key "launchers" 2>/dev/null)
+
+        LAUNCHER="applications:skyware-settings.desktop"
+        if ! echo "$EXISTING" | grep -q "skyware-settings"; then
+            NEW_LAUNCHERS="${EXISTING:+$EXISTING,}$LAUNCHER"
+            kwriteconfig6 --file "$APPLETSRC"                 --group "Containments" --group "$(grep -B20 "Applets\]\[$TM_ID\]" "$APPLETSRC" | grep -oP '(?<=Containments\]\[)[0-9]+' | tail -1)"                 --group "Applets" --group "$TM_ID"                 --group "Configuration" --group "General"                 --key "launchers" "$NEW_LAUNCHERS" 2>/dev/null &&                 echo "✔ SkywareOS Settings pinned to taskbar (applet $TM_ID)"
+        else
+            echo "→ SkywareOS Settings already pinned to taskbar"
+        fi
+    fi
+fi
+
+# Autostart script to pin on first login if config didn't exist yet
+mkdir -p "$HOME/.config/autostart-scripts"
+cat > "$HOME/.config/autostart-scripts/skyware-pin-taskbar.sh" << 'PINEOF'
+#!/bin/bash
+FLAG="$HOME/.config/skyware/taskbar-pinned"
+[ -f "$FLAG" ] && exit 0
+sleep 6
+
+APPLETSRC="$HOME/.config/plasma-org.kde.plasma.desktop-appletsrc"
+[ -f "$APPLETSRC" ] || exit 0
+
+TM_ID=$(grep -B5 "org.kde.plasma.icontasks\|org.kde.plasma.taskmanager"     "$APPLETSRC" 2>/dev/null | grep -oP '(?<=\[Applets\]\[)[0-9]+' | tail -1)
+[ -z "$TM_ID" ] && exit 0
+
+CONT_ID=$(grep -B20 "\[Applets\]\[$TM_ID\]" "$APPLETSRC" | grep -oP '(?<=\[Containments\]\[)[0-9]+' | tail -1)
+[ -z "$CONT_ID" ] && exit 0
+
+EXISTING=$(kreadconfig6 --file "$APPLETSRC"     --group "Containments" --group "$CONT_ID"     --group "Applets" --group "$TM_ID"     --group "Configuration" --group "General"     --key "launchers" 2>/dev/null)
+
+LAUNCHER="applications:skyware-settings.desktop"
+if ! echo "$EXISTING" | grep -q "skyware-settings"; then
+    NEW="${EXISTING:+$EXISTING,}$LAUNCHER"
+    kwriteconfig6 --file "$APPLETSRC"         --group "Containments" --group "$CONT_ID"         --group "Applets" --group "$TM_ID"         --group "Configuration" --group "General"         --key "launchers" "$NEW" 2>/dev/null
+    qdbus6 org.kde.plasmashell /PlasmaShell         org.kde.PlasmaShell.evaluateScript         "var a=desktops()[0]; print(a);" 2>/dev/null || true
+fi
+
+mkdir -p "$HOME/.config/skyware"
+touch "$FLAG"
+PINEOF
+chmod +x "$HOME/.config/autostart-scripts/skyware-pin-taskbar.sh"
 
 # ============================================================
 # AppArmor (Mandatory Access Control)
