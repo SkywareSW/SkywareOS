@@ -1,18 +1,6 @@
 #!/bin/bash
 echo "== SkywareOS setup starting =="
 
-# ── Script Safety Setup ─────────────────────────────────────
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ASSETS_DIR="$SCRIPT_DIR/assets"
-
-echo "→ Running from: $SCRIPT_DIR"
-
-if [ ! -d "$ASSETS_DIR" ]; then
-    echo "⚠ Assets directory not found: $ASSETS_DIR"
-fi
-
 # -----------------------------
 # Pacman packages
 # -----------------------------
@@ -98,13 +86,7 @@ if [ -n "$LIMINE_CONF" ]; then
     # Add quiet splash to cmdline if not already present
     if grep -qi "^[[:space:]]*cmdline" "$LIMINE_CONF"; then
         # Only add if not already there
-        # Ensure quiet splash
-        sudo sed -i -E '/^[[:space:]]*cmdline/ s/$/ quiet splash/' "$LIMINE_CONF"
-
-        # If NVIDIA, enable DRM modeset
-        if echo "$GPU_INFO" | grep -qi "NVIDIA"; then
-            sudo sed -i -E '/^[[:space:]]*cmdline/ s/$/ nvidia_drm.modeset=1/' "$LIMINE_CONF"
-        fi
+        sudo sed -i -E '/^[[:space:]]*cmdline/{ /quiet/! s/$/ quiet splash/ }' "$LIMINE_CONF"
     fi
 
     echo "✔ Limine entries renamed to SkywareOS"
@@ -116,11 +98,11 @@ if [ -n "$LIMINE_CONF" ]; then
     LIMINE_DIR=$(dirname "$LIMINE_CONF")
 
     # Generate a 1920x1080 boot background with the Skyware logo centered
-    if [ -f assets/skywareos.svg ]; then
+    if [ -f assets/skywareos-logo.svg ]; then
         sudo pacman -S --noconfirm --needed imagemagick librsvg
 
         # Convert SVG logo to PNG at display size
-        sudo rsvg-convert -w 300 -h 300 assets/skywareos.svg \
+        sudo rsvg-convert -w 300 -h 300 assets/skywareos-logo.svg \
             -o /tmp/skyware-logo-300.png
 
         # Composite onto a dark background (1920x1080)
@@ -140,60 +122,55 @@ if [ -n "$LIMINE_CONF" ]; then
 
         echo "✔ Limine boot background set to Skyware logo"
     else
-        echo "⚠ assets/skywareos.svg not found — skipping Limine logo"
+        echo "⚠ assets/skywareos-logo.svg not found — skipping Limine logo"
     fi
 else
     echo "⚠ Limine config not found — skipping bootloader branding"
 fi
 
-# ============================================================
-# Plymouth Bootsplash (Hardened)
-# ============================================================
+# ── 2. Plymouth bootsplash ───────────────────────────────────
+echo "→ Setting up Plymouth bootsplash..."
 
-echo "== Setting up Plymouth bootsplash (hardened) =="
+if ! command -v plymouthd &>/dev/null; then
+    sudo pacman -S --noconfirm --needed plymouth
+fi
+sudo pacman -S --noconfirm --needed librsvg
 
-# Ensure asset path exists
-if [ ! -f "$ASSETS_DIR/skywareos.svg" ]; then
-    echo "⚠ skywareos.svg not found in $ASSETS_DIR"
-    echo "⚠ Skipping Plymouth setup to avoid boot issues"
-else
+THEME_DIR="/usr/share/plymouth/themes/skywareos"
+sudo mkdir -p "$THEME_DIR"
 
-    sudo pacman -S --noconfirm --needed plymouth librsvg
-
-    THEME_NAME="skywareos"
-    THEME_DIR="/usr/share/plymouth/themes/$THEME_NAME"
-
-    sudo mkdir -p "$THEME_DIR"
-
-    echo "→ Generating Plymouth logo images..."
-
-    sudo rsvg-convert -w 512 -h 512 "$ASSETS_DIR/skywareos.svg" \
+# Convert logo SVG → PNG for Plymouth (512x512 and a smaller 128x128 spinner base)
+if [ -f assets/skywareos-logo.svg ]; then
+    sudo rsvg-convert -w 512 -h 512 assets/skywareos-logo.svg \
         -o "$THEME_DIR/logo.png"
-
-    sudo rsvg-convert -w 128 -h 128 "$ASSETS_DIR/skywareos.svg" \
+    sudo rsvg-convert -w 128 -h 128 assets/skywareos-logo.svg \
         -o "$THEME_DIR/logo-small.png"
+    echo "✔ Plymouth logo images generated"
+else
+    echo "⚠ assets/skywareos-logo.svg not found — Plymouth will show text-only splash"
+fi
 
-    if [ ! -f "$THEME_DIR/logo.png" ]; then
-        echo "⚠ Logo conversion failed — skipping Plymouth to prevent boot hang"
-    else
-
-        echo "→ Writing Plymouth theme files..."
-
-        sudo tee "$THEME_DIR/$THEME_NAME.plymouth" >/dev/null <<EOF
+# Theme descriptor
+sudo tee "$THEME_DIR/skywareos.plymouth" >/dev/null << 'EOF'
 [Plymouth Theme]
 Name=SkywareOS
 Description=SkywareOS Boot Splash
 ModuleName=script
 
 [script]
-ImageDir=$THEME_DIR
-ScriptFile=$THEME_DIR/$THEME_NAME.script
+ImageDir=/usr/share/plymouth/themes/skywareos
+ScriptFile=/usr/share/plymouth/themes/skywareos/skywareos.script
 EOF
 
-        sudo tee "$THEME_DIR/$THEME_NAME.script" >/dev/null <<'EOF'
+# Plymouth script — centered logo on dark background with a clean progress bar
+sudo tee "$THEME_DIR/skywareos.script" >/dev/null << 'EOF'
+# ── SkywareOS Plymouth Theme ──────────────────────────────────
+
+# Background
 Window.SetBackgroundTopColor(0.07, 0.07, 0.07);
 Window.SetBackgroundBottomColor(0.04, 0.04, 0.05);
 
+# Load and center the logo
 logo.image = Image("logo.png");
 logo.sprite = Sprite(logo.image);
 
@@ -201,20 +178,29 @@ logo.x = Window.GetWidth()  / 2 - logo.image.GetWidth()  / 2;
 logo.y = Window.GetHeight() / 2 - logo.image.GetHeight() / 2 - 40;
 logo.sprite.SetPosition(logo.x, logo.y, 0);
 
+# Progress bar — thin strip at bottom
 bar_height  = 3;
 bar_y       = Window.GetHeight() - 60;
 bar_width   = Window.GetWidth() * 0.4;
 bar_x       = Window.GetWidth() / 2 - bar_width / 2;
 
+# Background track (dark)
 bar_bg.image  = Image.Scale(Image.New(1, 1), bar_width, bar_height);
 bar_bg.image.SetOpacity(0.15);
 bar_bg.sprite = Sprite(bar_bg.image);
 bar_bg.sprite.SetPosition(bar_x, bar_y, 1);
 
-bar.width  = 2;
+# Filled portion (light gray)
+bar.width  = 1;
 bar.image  = Image.Scale(Image.New(1, 1), bar.width, bar_height);
 bar.sprite = Sprite(bar.image);
 bar.sprite.SetPosition(bar_x, bar_y, 2);
+
+fun refresh_callback() {
+    bar.sprite.SetOpacity(1);
+    bar_bg.sprite.SetOpacity(0.2);
+}
+Plymouth.SetRefreshFunction(refresh_callback);
 
 fun boot_progress_callback(duration, progress) {
     new_width = Math.Int(bar_width * progress);
@@ -227,47 +213,32 @@ fun boot_progress_callback(duration, progress) {
     }
 }
 Plymouth.SetBootProgressFunction(boot_progress_callback);
+
+fun quit_callback() {
+    logo.sprite.SetOpacity(0);
+    bar.sprite.SetOpacity(0);
+    bar_bg.sprite.SetOpacity(0);
+}
+Plymouth.SetQuitFunction(quit_callback);
 EOF
 
-        # ----------------------------------------------------
-        # Safe mkinitcpio configuration
-        # ----------------------------------------------------
-
-        echo "→ Configuring mkinitcpio safely..."
-
-        MKINIT="/etc/mkinitcpio.conf"
-
-        if [ -f "$MKINIT" ]; then
-            sudo cp "$MKINIT" "$MKINIT.bak"
-
-            GPU_INFO=$(lspci | grep -E "VGA|3D")
-
-            if echo "$GPU_INFO" | grep -qi "NVIDIA"; then
-                sudo sed -i 's/^MODULES=.*/MODULES=(nvidia nvidia_modeset nvidia_uvm nvidia_drm)/' $MKINIT
-            elif echo "$GPU_INFO" | grep -qi "AMD"; then
-                sudo sed -i 's/^MODULES=.*/MODULES=(amdgpu)/' $MKINIT
-            elif echo "$GPU_INFO" | grep -qi "Intel"; then
-                sudo sed -i 's/^MODULES=.*/MODULES=(i915)/' $MKINIT
-            fi
-
-            sudo sed -i 's/^HOOKS=.*/HOOKS=(base udev autodetect modconf kms plymouth keyboard keymap block filesystems fsck)/' $MKINIT
-
-            sudo mkinitcpio -P
-        fi
-
-        # ----------------------------------------------------
-        # Set theme safely
-        # ----------------------------------------------------
-
-        if [ -f "$THEME_DIR/logo.png" ]; then
-            sudo plymouth-set-default-theme -R $THEME_NAME
-            echo "✔ Plymouth configured successfully"
-        else
-            echo "⚠ Plymouth logo missing — falling back to spinner"
-            sudo plymouth-set-default-theme -R spinner
-        fi
+# ── 3. Hook Plymouth into initramfs ─────────────────────────
+# Must be after 'base udev' and before 'filesystems' in the HOOKS array
+if grep -q "^HOOKS=" /etc/mkinitcpio.conf; then
+    if ! grep -q "plymouth" /etc/mkinitcpio.conf; then
+        # Insert plymouth right after udev
+        sudo sed -i '/^HOOKS=/ s/udev/udev plymouth/' /etc/mkinitcpio.conf
+        echo "→ Plymouth hook inserted after udev in mkinitcpio.conf"
+    else
+        echo "→ Plymouth hook already present in mkinitcpio.conf"
     fi
 fi
+
+sudo mkinitcpio -P
+echo "✔ Initramfs rebuilt with Plymouth"
+
+sudo plymouth-set-default-theme -R skywareos
+echo "✔ Plymouth theme set: skywareos"
 
 echo "→ Bootloader branding + bootsplash setup complete"
 
@@ -487,58 +458,39 @@ sudo cp assets/skywareos.svg \
     /usr/share/icons/hicolor/scalable/apps/skywareos-start.svg 2>/dev/null || true
 sudo gtk-update-icon-cache /usr/share/icons/hicolor 2>/dev/null || true
 
-# Startup script that patches the Kickoff applet once Plasma is running
-mkdir -p "$HOME/.config/plasma-workspace/env"
-cat > "$HOME/.config/plasma-workspace/env/skyware-kickoff-icon.sh" << 'ENVEOF'
+# KDE Kickoff icon — set via autostart script after Plasma loads
+# kwriteconfig6 at install time doesn't work because the applet ID isn't known yet.
+# An autostart script finds it dynamically after Plasma is running.
+mkdir -p "$HOME/.config/autostart-scripts"
+cat > "$HOME/.config/autostart-scripts/skyware-kickoff-icon.sh" << 'ENVEOF'
 #!/bin/bash
-# SkywareOS: set Kickoff start button icon on first Plasma login
-APPLETSRC="$HOME/.config/plasma-org.kde.plasma.desktop-appletsrc"
 FLAG="$HOME/.config/skyware/kickoff-icon-set"
 [ -f "$FLAG" ] && exit 0
-sleep 4  # wait for Plasma to finish loading
+sleep 5
 
-if [ -f "$APPLETSRC" ]; then
-    # Find the applet ID for the Kickoff/Kicker widget
-    KICKOFF_ID=$(grep -B5 "org.kde.plasma.kickoff\|org.kde.plasma.kicker" \
-        "$APPLETSRC" 2>/dev/null \
-        | grep "^\[Applets\]\[" | tail -1 | grep -oP '[0-9]+')
+APPLETSRC="$HOME/.config/plasma-org.kde.plasma.desktop-appletsrc"
+[ -f "$APPLETSRC" ] || exit 0
 
-    if [ -n "$KICKOFF_ID" ]; then
-        kwriteconfig6 \
-            --file plasma-org.kde.plasma.desktop-appletsrc \
-            --group "Applets" --group "$KICKOFF_ID" \
-            --group "Configuration" --group "General" \
-            --key "icon" "skywareos-start"
+KICKOFF_ID=$(grep -B5 "org.kde.plasma.kickoff\|org.kde.plasma.kicker" \
+    "$APPLETSRC" 2>/dev/null | grep -oP '(?<=\[Applets\]\[)[0-9]+' | tail -1)
 
-        # Soft-reload plasmashell applets (no full restart needed)
-        qdbus6 org.kde.plasmashell /PlasmaShell \
-            org.kde.PlasmaShell.evaluateScript \
-            "var a=desktops()[0]; print(a);" 2>/dev/null || true
-
-        echo "SkywareOS: Kickoff icon set (applet $KICKOFF_ID)"
-    fi
+if [ -n "$KICKOFF_ID" ]; then
+    kwriteconfig6 \
+        --file "$APPLETSRC" \
+        --group "Applets" --group "$KICKOFF_ID" \
+        --group "Configuration" --group "General" \
+        --key "icon" "skywareos-start" 2>/dev/null
+    # Reload plasmashell config without full restart
+    qdbus6 org.kde.plasmashell /PlasmaShell \
+        org.kde.PlasmaShell.evaluateScript \
+        "plasmaShell.loadScriptInApplet('org.kde.plasma.kickoff', '');" \
+        2>/dev/null || true
+    mkdir -p "$HOME/.config/skyware"
+    touch "$FLAG"
 fi
-
-mkdir -p "$(dirname "$FLAG")"
-touch "$FLAG"
 ENVEOF
-chmod +x "$HOME/.config/plasma-workspace/env/skyware-kickoff-icon.sh"
-
-# If appletsrc already exists (upgrading), patch it immediately too
-if [ -f "$HOME/.config/plasma-org.kde.plasma.desktop-appletsrc" ]; then
-    KICKOFF_ID=$(grep -B5 "org.kde.plasma.kickoff\|org.kde.plasma.kicker" \
-        "$HOME/.config/plasma-org.kde.plasma.desktop-appletsrc" 2>/dev/null \
-        | grep "^\[Applets\]\[" | tail -1 | grep -oP '[0-9]+')
-    if [ -n "$KICKOFF_ID" ]; then
-        kwriteconfig6 \
-            --file plasma-org.kde.plasma.desktop-appletsrc \
-            --group "Applets" --group "$KICKOFF_ID" \
-            --group "Configuration" --group "General" \
-            --key "icon" "skywareos-start" 2>/dev/null || true
-        echo "✔ Kickoff icon patched immediately (applet ID: $KICKOFF_ID)"
-    fi
-fi
-echo "✔ KDE Kickoff start button will use skywareos.svg on next login"
+chmod +x "$HOME/.config/autostart-scripts/skyware-kickoff-icon.sh"
+echo "✔ KDE Kickoff icon will be set to skywareos-start on next login"
 sudo pacman -S --noconfirm --needed sddm breeze sddm-kcm
 sudo mkdir -p /etc/sddm.conf.d
 # sddm theme configured by custom QML theme section below
@@ -867,17 +819,36 @@ print(f'{gb/elapsed:.1f} GB/s')
         echo -e "ware git                 - Open SkywareOS website"
         echo -e "ware dualboot            - Set up dual boot with Limine" ;;
     interactive) interactive_install ;;
-    safe-boot)
-        sudo sed -i 's/ plymouth//g' /etc/mkinitcpio.conf
-        sudo mkinitcpio -P
-        echo "✔ Plymouth disabled. Reboot to recover."
-        ;;
     *)
         echo "Usage: ware <command>"
         echo "Run 'ware help' for a full list of commands." ;;
 esac
 EOF
 sudo chmod +x /usr/local/bin/ware
+
+# ── Polkit + sudoers: allow ware commands from Electron without password prompt ──
+# The Settings GUI runs as the normal user but ware uses sudo internally.
+# Without this, sudo fails with "no tty" when invoked from Electron.
+sudo mkdir -p /etc/polkit-1/rules.d
+sudo tee /etc/polkit-1/rules.d/10-skyware.rules > /dev/null << 'POLKITEOF'
+polkit.addRule(function(action, subject) {
+    if (subject.isInGroup("wheel")) {
+        return polkit.Result.YES;
+    }
+});
+POLKITEOF
+
+sudo tee /etc/sudoers.d/10-skyware > /dev/null << 'SUDOEOF'
+# SkywareOS Settings App — wheel users run system commands without password
+%wheel ALL=(ALL) NOPASSWD: /usr/local/bin/ware
+%wheel ALL=(ALL) NOPASSWD: /usr/bin/pacman
+%wheel ALL=(ALL) NOPASSWD: /usr/bin/flatpak
+%wheel ALL=(ALL) NOPASSWD: /usr/bin/systemctl
+%wheel ALL=(ALL) NOPASSWD: /usr/bin/reflector
+%wheel ALL=(ALL) NOPASSWD: /usr/bin/checkupdates
+SUDOEOF
+sudo chmod 440 /etc/sudoers.d/10-skyware
+echo "✔ Passwordless sudo configured for ware commands"
 
 # ============================================================
 # SkywareOS Settings App (Electron + React)
@@ -1756,6 +1727,11 @@ sudo pacman -S --noconfirm --needed \
     openvpn \
     networkmanager \
     network-manager-applet
+
+# Disable wait-online — this service waits for full network before boot continues,
+# causing 60-75s delays on desktop systems. NetworkManager handles connections fine
+# in the background without holding up SDDM and the rest of the boot chain.
+sudo systemctl disable NetworkManager-wait-online.service 2>/dev/null || true
 
 # ProtonVPN CLI (AUR)
 if command -v paru &>/dev/null; then
@@ -3093,38 +3069,66 @@ elif command -v convert &>/dev/null && [ -f assets/skywareos.svg ]; then
     sudo convert -size 1920x1080 xc:#111113         /tmp/skyware-logo-300.png -gravity Center -composite         "$BREEZE_DIR/background.jpg" 2>/dev/null || true
 fi
 
-# Write theme.conf — required by SDDM even for built-in themes
-sudo tee "$BREEZE_DIR/theme.conf" > /dev/null << 'EOF'
+# Write theme.conf with absolute path — relative paths cause white screen
+sudo tee "$BREEZE_DIR/theme.conf" > /dev/null << THEMEEOF
 [General]
-background=background.jpg
+background=/usr/share/sddm/themes/breeze/background.jpg
 type=image
-EOF
+color=#111113
+fontSize=10
+showClock=true
+THEMEEOF
 
-# Override with SkywareOS background if we have it
-sudo tee "$BREEZE_DIR/theme.conf.user" > /dev/null << 'EOF'
+sudo tee "$BREEZE_DIR/theme.conf.user" > /dev/null << THEMEEOF
 [General]
-background=background.jpg
+background=/usr/share/sddm/themes/breeze/background.jpg
 type=image
-EOF
+color=#111113
+THEMEEOF
+
+# If no background image exists, generate a solid dark one so it's never white
+if [ ! -f "$BREEZE_DIR/background.jpg" ]; then
+    if command -v convert &>/dev/null; then
+        sudo convert -size 1920x1080 xc:#111113 "$BREEZE_DIR/background.jpg" 2>/dev/null || true
+    else
+        # No imagemagick — switch to color mode
+        sudo sed -i 's|background=.*||; s/type=image/type=color/' "$BREEZE_DIR/theme.conf"
+        sudo sed -i 's|background=.*||; s/type=image/type=color/' "$BREEZE_DIR/theme.conf.user"
+    fi
+fi
 
 # ── Write the SDDM global config ──
 sudo mkdir -p /etc/sddm.conf.d
-sudo tee /etc/sddm.conf.d/10-skywareos.conf > /dev/null << 'EOF'
+# NVIDIA cards cannot run kwin_wayland as the SDDM greeter compositor —
+# the DRM node opens but the compositor freezes or crashes immediately.
+# Use X11 for the greeter on NVIDIA; user can still log into a Wayland session.
+# On non-NVIDIA hardware, use Wayland.
+if echo "$GPU_INFO" | grep -qi "NVIDIA"; then
+    SDDM_DISPLAY_SERVER="x11"
+    SDDM_EXTRA=""
+else
+    SDDM_DISPLAY_SERVER="wayland"
+    SDDM_EXTRA="[Wayland]
+CompositorCommand=kwin_wayland --drm --no-lockscreen --no-global-shortcuts --locale1"
+fi
+
+sudo tee /etc/sddm.conf.d/10-skywareos.conf > /dev/null << SDDMEOF
 [Theme]
 Current=breeze
 
 [General]
-DisplayServer=wayland
+DisplayServer=${SDDM_DISPLAY_SERVER}
 
-[Wayland]
-CompositorCommand=kwin_wayland --drm --no-lockscreen --no-global-shortcuts --locale1
-EOF
+[X11]
+MinimumVT=1
+${SDDM_EXTRA}
+SDDMEOF
 
 # Make sure SDDM service is properly enabled (not just the socket)
 sudo systemctl enable sddm
 sudo systemctl disable gdm lightdm 2>/dev/null || true
 
-echo "✔ SDDM configured (breeze theme, Wayland/kwin mode)"
+echo "✔ SDDM configured (breeze theme, ${SDDM_DISPLAY_SERVER} mode)"
 echo "  → To test without rebooting: sudo systemctl restart sddm"
 echo "  → Features: live clock, date, Skyware logo, dark login form, session picker, power buttons"
 
