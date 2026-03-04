@@ -560,6 +560,11 @@ sudo tee /usr/local/bin/ware > /dev/null << 'EOF'
 #!/bin/bash
 LOGFILE="/var/log/ware.log"
 JSON_MODE=false
+
+# Ensure passwordless sudo is configured — required for GUI/no-tty contexts
+if [ ! -f /etc/sudoers.d/10-skyware ]; then
+    sudo bash -c "echo '%wheel ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/10-skyware" 2>/dev/null &&         sudo chmod 440 /etc/sudoers.d/10-skyware 2>/dev/null || true
+fi
 GREEN="\e[32m"; RED="\e[31m"; BLUE="\e[34m"; YELLOW="\e[33m"; CYAN="\e[36m"; RESET="\e[0m"
 log() { echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | sudo tee -a "$LOGFILE" >/dev/null; }
 header() { [ "$JSON_MODE" = true ] && return; echo ""; }
@@ -945,25 +950,47 @@ ipcMain.handle('run-cmd', async (event, cmd) => {
     };
 
     // Commands that are interactive or long-running need a real terminal
-    // Launch them in kitty/alacritty instead of running inline
-    const TERMINAL_CMDS = ['ware upgrade', 'ware switch', 'ware setup'];
+    const TERMINAL_CMDS = ['ware upgrade', 'ware switch', 'ware setup', 'ware snap', 'ware dm switch'];
     const needsTerminal = TERMINAL_CMDS.some(c => cmd.startsWith(c.replace(/^\/usr\/local\/bin\//, '')));
 
     if (needsTerminal) {
-      const { spawnSync, spawn } = require('child_process');
-      const terms = ['kitty', 'alacritty', 'konsole', 'xterm'];
-      let term = null;
-      for (const t of terms) {
-        if (spawnSync('which', [t], { env }).status === 0) { term = t; break; }
+      const { spawn } = require('child_process');
+      // Write a temp script so there are zero quoting issues
+      const tmpScript = '/tmp/skyware-run-' + Date.now() + '.sh';
+      require('fs').writeFileSync(tmpScript,
+        '#!/bin/bash\n' + cmd + '\necho\nread -p \'Press Enter to close...\'\n'
+      );
+      require('fs').chmodSync(tmpScript, 0o755);
+
+      // Try each terminal with its correct flag style
+      const termArgs = [
+        ['kitty', [tmpScript]],
+        ['alacritty', ['-e', 'bash', tmpScript]],
+        ['konsole', ['-e', 'bash', tmpScript]],
+        ['xterm', ['-e', 'bash', tmpScript]],
+      ];
+
+      let launched = false;
+      for (const [t, args] of termArgs) {
+        const which = require('child_process').spawnSync('which', [t], { env });
+        if (which.status === 0) {
+          spawn(t, args, { env, detached: true, stdio: 'ignore' }).unref();
+          resolve({ stdout: '→ Opened in ' + t, stderr: '', code: 0 });
+          launched = true;
+          break;
+        }
       }
-      if (term) {
-        spawn(term, ['-e', 'bash', '-c', `${cmd}; echo; read -p 'Press Enter to close...'`], {
-          env, detached: true, stdio: 'ignore'
-        }).unref();
-      } else {
-        spawn('bash', ['-c', cmd], { env, detached: true, stdio: 'ignore' }).unref();
+      if (!launched) {
+        // No terminal — run in background and stream output normally
+        const child = exec(
+          `bash -c "${cmd.replace(/"/g, '\\"')}"`,
+          { env, maxBuffer: 50 * 1024 * 1024, timeout: 300000 },
+          (err, stdout, stderr) => {
+            resolve({ stdout: stdout || '', stderr: stderr || '', code: err ? err.code : 0 });
+          }
+        );
+        if (child.stdin) child.stdin.end();
       }
-      resolve({ stdout: term ? '→ Opened in ' + term : '→ Running in background...', stderr: '', code: 0 });
       return;
     }
 
