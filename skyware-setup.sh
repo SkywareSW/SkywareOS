@@ -86,7 +86,13 @@ if [ -n "$LIMINE_CONF" ]; then
     # Add quiet splash to cmdline if not already present
     if grep -qi "^[[:space:]]*cmdline" "$LIMINE_CONF"; then
         # Only add if not already there
-        sudo sed -i -E '/^[[:space:]]*cmdline/{ /quiet/! s/$/ quiet splash/ }' "$LIMINE_CONF"
+        # Ensure quiet splash
+        sudo sed -i -E '/^[[:space:]]*cmdline/ s/$/ quiet splash/' "$LIMINE_CONF"
+
+        # If NVIDIA, enable DRM modeset
+        if echo "$GPU_INFO" | grep -qi "NVIDIA"; then
+            sudo sed -i -E '/^[[:space:]]*cmdline/ s/$/ nvidia_drm.modeset=1/' "$LIMINE_CONF"
+        fi
     fi
 
     echo "✔ Limine entries renamed to SkywareOS"
@@ -222,17 +228,38 @@ fun quit_callback() {
 Plymouth.SetQuitFunction(quit_callback);
 EOF
 
-# ── 3. Hook Plymouth into initramfs ─────────────────────────
-# Must be after 'base udev' and before 'filesystems' in the HOOKS array
-if grep -q "^HOOKS=" /etc/mkinitcpio.conf; then
-    if ! grep -q "plymouth" /etc/mkinitcpio.conf; then
-        # Insert plymouth right after udev
-        sudo sed -i '/^HOOKS=/ s/udev/udev plymouth/' /etc/mkinitcpio.conf
-        echo "→ Plymouth hook inserted after udev in mkinitcpio.conf"
-    else
-        echo "→ Plymouth hook already present in mkinitcpio.conf"
-    fi
+# ── 3. Properly configure mkinitcpio for Plymouth + KMS ─────────────
+
+echo "→ Configuring mkinitcpio hooks safely..."
+
+MKINIT="/etc/mkinitcpio.conf"
+
+# Detect GPU for early KMS module loading
+GPU_INFO=$(lspci | grep -E "VGA|3D")
+
+if echo "$GPU_INFO" | grep -qi "NVIDIA"; then
+    echo "→ NVIDIA detected: enabling early KMS"
+    sudo sed -i 's/^MODULES=.*/MODULES=(nvidia nvidia_modeset nvidia_uvm nvidia_drm)/' $MKINIT
+elif echo "$GPU_INFO" | grep -qi "AMD"; then
+    echo "→ AMD detected: enabling early KMS"
+    sudo sed -i 's/^MODULES=.*/MODULES=(amdgpu)/' $MKINIT
+elif echo "$GPU_INFO" | grep -qi "Intel"; then
+    echo "→ Intel detected: enabling early KMS"
+    sudo sed -i 's/^MODULES=.*/MODULES=(i915)/' $MKINIT
 fi
+
+# Force clean, correct HOOK ordering
+sudo sed -i 's/^HOOKS=.*/HOOKS=(base udev autodetect modconf kms plymouth keyboard keymap block filesystems fsck)/' $MKINIT
+
+echo "✔ mkinitcpio hooks corrected"
+
+# Rebuild initramfs
+sudo mkinitcpio -P
+
+# Set Plymouth theme
+sudo plymouth-set-default-theme -R skywareos
+
+echo "✔ Initramfs rebuilt with proper KMS + Plymouth ordering"
 
 sudo mkinitcpio -P
 echo "✔ Initramfs rebuilt with Plymouth"
